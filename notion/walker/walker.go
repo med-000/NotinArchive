@@ -97,6 +97,8 @@ func exportDatabaseRows(c *client.Client, databaseID, dir string) error {
 		return err
 	}
 
+	used := map[string]string{}
+
 	for _, row := range rows {
 		if isArchivedOrTrashed(row) {
 			continue
@@ -107,16 +109,16 @@ func exportDatabaseRows(c *client.Client, databaseID, dir string) error {
 			continue
 		}
 
-		rowTitle := converter.ExtractTitle(row)
-		writer.WriteMD(dir, rowID, converter.BlocksToMarkdown(rowTitle, nil))
+		stem := writer.UniqueIDStem(rowID, used)
+		writer.WriteMDStem(dir, stem, converter.RowToMarkdown(row, nil))
 
 		blocks, err := c.GetAllBlocks(rowID)
 		if err != nil {
 			continue
 		}
 
-		md := converter.BlocksToMarkdown(rowTitle, blocks)
-		writer.WriteMD(dir, rowID, md)
+		md := converter.RowToMarkdown(row, blocks)
+		writer.WriteMDStem(dir, stem, md)
 	}
 
 	return nil

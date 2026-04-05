@@ -40,7 +40,7 @@ func Sync(rootDir string) error {
 			}
 
 			title := converter.ExtractTitle(raw)
-			dir := filepath.Join(rootDir, writer.Sanitize(title+"_"+writer.ShortID(id)))
+			dir := filepath.Join(rootDir, writer.Sanitize(title))
 
 			fmt.Println("page:", dir)
 
@@ -56,14 +56,13 @@ func Sync(rootDir string) error {
 				continue
 			}
 
-			
 			id, ok := raw["id"].(string)
 			if !ok {
 				continue
 			}
 
 			title := extractDatabaseTitle(raw)
-			dir := filepath.Join(rootDir, writer.Sanitize(title+"_"+writer.ShortID(id)))
+			dir := filepath.Join(rootDir, writer.Sanitize(title))
 			writer.CreateDir(dir)
 
 			if err := exportDatabaseRows(c, id, dir); err != nil {
@@ -130,6 +129,8 @@ func exportDatabaseRows(c *client.Client, databaseID, dir string) error {
 		return err
 	}
 
+	used := map[string]string{}
+
 	for _, row := range rows {
 		if isArchivedOrTrashed(row) {
 			continue
@@ -140,16 +141,16 @@ func exportDatabaseRows(c *client.Client, databaseID, dir string) error {
 			continue
 		}
 
-		title := converter.ExtractTitle(row)
-		writer.WriteMD(dir, rowID, converter.BlocksToMarkdown(title, nil))
+		stem := writer.UniqueIDStem(rowID, used)
+		writer.WriteMDStem(dir, stem, converter.RowToMarkdown(row, nil))
 
 		blocks, err := c.GetAllBlocks(rowID)
 		if err != nil {
 			continue
 		}
 
-		md := converter.BlocksToMarkdown(title, blocks)
-		writer.WriteMD(dir, rowID, md)
+		md := converter.RowToMarkdown(row, blocks)
+		writer.WriteMDStem(dir, stem, md)
 	}
 
 	return nil
